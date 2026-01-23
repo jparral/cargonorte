@@ -1,8 +1,10 @@
 <?php
 require_once 'config/db.php';
+require_once 'includes/auth.php'; // Seguridad activada
+
 $pdo = getDBConnection();
 
-// Obtener Fleteros para el select
+// Obtener Fleteros para el select (asegurando que traemos el teléfono)
 $fleteros = $pdo->query("SELECT * FROM fleteros WHERE activo = 1")->fetchAll();
 $fechaHoy = date('Y-m-d');
 ?>
@@ -15,19 +17,13 @@ $fechaHoy = date('Y-m-d');
     <style>
         #map { height: 600px; width: 100%; border-radius: 8px; }
         .entregas-list { max-height: 600px; overflow-y: auto; }
+        /* Pequeño ajuste visual para la lista */
+        .list-group-item { cursor: pointer; } 
+        .list-group-item:hover { background-color: #f8f9fa; }
     </style>
 </head>
 <body class="bg-light">
-
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-  <div class="container">
-    <a class="navbar-brand" href="#">Panel Logístico</a>
-    <div class="navbar-nav">
-      <a class="nav-link" href="index.php">1. Validar Direcciones</a>
-      <a class="nav-link active" href="mapa_rutas.php">2. Armar Rutas</a>
-    </div>
-  </div>
-</nav>
+<?php include 'includes/navbar.php'; ?>
 
 <div class="container-fluid px-4">
     <div class="row mb-3">
@@ -49,18 +45,22 @@ $fechaHoy = date('Y-m-d');
                     <div class="mb-3">
                         <label>Seleccionar Fletero:</label>
                         <select id="select-fletero" class="form-select">
-                            <option value="">-- Elegir --</option>
+                            <option value="" data-tel="">-- Elegir --</option>
                             <?php foreach ($fleteros as $f): ?>
-                                <option value="<?= $f['id_fletero'] ?>"><?= $f['nombre'] ?></option>
+                                <!-- CAMBIO AQUI: Agregamos data-tel -->
+                                <option value="<?= $f['id_fletero'] ?>" data-tel="<?= htmlspecialchars($f['telefono'] ?? '') ?>">
+                                    <?= htmlspecialchars($f['nombre']) ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <p class="small text-muted">Selecciona puntos en el mapa haciendo clic en ellos.</p>
-                    <button class="btn btn-success w-100" onclick="guardarAsignacion()">💾 Guardar Asignación</button>
+                    <button class="btn btn-success w-100 mb-2" onclick="guardarAsignacion()">💾 Guardar Asignación</button>
+                    <button class="btn btn-outline-success w-100" onclick="compartirWhatsapp()">📱 Enviar por WhatsApp</button>
                 </div>
             </div>
             
-            <div class="card">
+            <div class="card shadow-sm">
                 <div class="card-header">Seleccionados (<span id="contador-sel">0</span>)</div>
                 <ul class="list-group list-group-flush entregas-list" id="lista-seleccionados">
                     <!-- Aquí se llenan los seleccionados con JS -->
@@ -70,28 +70,28 @@ $fechaHoy = date('Y-m-d');
 
         <!-- Columna Derecha: Mapa -->
         <div class="col-md-9">
-            <div id="map"></div>
+            <div id="map" class="shadow"></div>
         </div>
     </div>
 </div>
 
 <!-- Scripts -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<!-- IMPORTANTE: Reemplaza TU_API_KEY_AQUI con tu clave real -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- API Key Configurada -->
 <script src="https://maps.googleapis.com/maps/api/js?key=<?= GOOGLE_API_KEY ?>&callback=initMap" async defer></script>
 
 <script>
 let map;
 let markers = [];
-let selectedEntregas = []; // IDs de entregas seleccionadas
+let selectedEntregas = []; 
 
 function initMap() {
-    // Centrar mapa en Buenos Aires por defecto
     map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: -34.6037, lng: -58.3816 },
+        center: { lat: -34.6037, lng: -58.3816 }, // Buenos Aires
         zoom: 12,
     });
-    cargarPuntos(); // Cargar al inicio
+    cargarPuntos(); 
 }
 
 function cargarPuntos() {
@@ -110,7 +110,7 @@ function cargarPuntos() {
             res.data.forEach(item => {
                 let position = { lat: parseFloat(item.latitud), lng: parseFloat(item.longitud) };
                 
-                // Icono diferente si ya está asignado
+                // Verde si ya tiene fletero, Rojo si está libre
                 let iconUrl = item.nombre_fletero 
                     ? "http://maps.google.com/mapfiles/ms/icons/green-dot.png" 
                     : "http://maps.google.com/mapfiles/ms/icons/red-dot.png";
@@ -121,10 +121,9 @@ function cargarPuntos() {
                     title: item.nombre_cliente,
                     icon: iconUrl,
                     id_entrega: item.id_entrega,
-                    data: item // Guardamos toda la data en el marker
+                    data: item 
                 });
 
-                // Evento Clic
                 marker.addListener("click", () => {
                     toggleSeleccion(marker);
                 });
@@ -143,30 +142,34 @@ function toggleSeleccion(marker) {
     let index = selectedEntregas.indexOf(id);
 
     if (index === -1) {
-        // Seleccionar
+        // Seleccionar (Azul)
         selectedEntregas.push(id);
-        marker.setIcon("http://maps.google.com/mapfiles/ms/icons/blue-dot.png"); // Cambiar a Azul
+        marker.setIcon("http://maps.google.com/mapfiles/ms/icons/blue-dot.png");
         
-        // Agregar a la lista visual
+        // Agregar a la lista lateral
         $('#lista-seleccionados').append(
-            `<li class="list-group-item small" id="li-${id}">
-                <b>${marker.data.nombre_cliente}</b><br>
-                ${marker.data.direccion_formateada}
+            `<li class="list-group-item small" id="li-${id}" onclick="centrarMapa(${marker.getPosition().lat()}, ${marker.getPosition().lng()})">
+                <strong>${marker.data.nombre_cliente}</strong><br>
+                <span class="text-muted">${marker.data.direccion_formateada}</span>
             </li>`
         );
     } else {
-        // Deseleccionar
+        // Deseleccionar (Volver a su color original)
         selectedEntregas.splice(index, 1);
-        // Volver al color original (verde si asignado, rojo si no)
+        
         let icon = marker.data.nombre_fletero 
             ? "http://maps.google.com/mapfiles/ms/icons/green-dot.png" 
             : "http://maps.google.com/mapfiles/ms/icons/red-dot.png";
         marker.setIcon(icon);
         
-        // Quitar de lista
         $('#li-' + id).remove();
     }
     $('#contador-sel').text(selectedEntregas.length);
+}
+
+function centrarMapa(lat, lng) {
+    map.setCenter({lat: lat, lng: lng});
+    map.setZoom(15);
 }
 
 function actualizarLista() {
@@ -197,12 +200,73 @@ function guardarAsignacion() {
         success: function(res) {
             if (res.status === 'success') {
                 alert('¡Ruta asignada correctamente!');
-                cargarPuntos(); // Recargar mapa para ver cambios
+                cargarPuntos();
             } else {
                 alert('Error: ' + res.message);
             }
         }
     });
+}
+
+function compartirWhatsapp() {
+    if (selectedEntregas.length === 0) {
+        alert("Selecciona entregas primero.");
+        return;
+    }
+
+    // 1. Obtener Fletero y Teléfono
+    let select = document.getElementById('select-fletero');
+    let opcionSeleccionada = select.options[select.selectedIndex];
+    let telefono = opcionSeleccionada.getAttribute('data-tel'); // Leemos el atributo data-tel
+    
+    // 2. Construir la URL Global de Google Maps
+    let baseUrl = "https://www.google.com/maps/dir/";
+    let waypoints = "";
+    
+    let mensajeTexto = "*Hoja de Ruta - " + $('#filtro-fecha').val() + "*\n";
+    mensajeTexto += "🚛 Fletero: " + opcionSeleccionada.text + "\n\n";
+
+    // Filtramos los markers que están seleccionados
+    let puntosOrdenados = markers.filter(m => selectedEntregas.includes(m.id_entrega));
+
+    puntosOrdenados.forEach((m, index) => {
+        let lat = m.data.latitud;
+        let lng = m.data.longitud;
+        let direccion = m.data.direccion_formateada;
+        let cliente = m.data.nombre_cliente;
+        let remito = m.data.comprobante;
+        // Importante: Bultos o info extra
+        let bultos = m.data.bultos || 0; 
+
+        // Agregar al link global de ruta
+        waypoints += `${lat},${lng}/`;
+
+        // Agregar al texto detallado
+        mensajeTexto += `📍 *Parada ${index + 1}: ${cliente}*\n`;
+        mensajeTexto += `📄 Remito: ${remito} (${bultos} bultos)\n`;
+        mensajeTexto += `🏠 ${direccion}\n`;
+        mensajeTexto += `🔗 https://www.google.com/maps/search/?api=1&query=${lat},${lng}\n\n`;
+    });
+
+    let linkGlobal = baseUrl + waypoints;
+    
+    mensajeTexto += "🌍 *Ruta Completa (Google Maps):*\n";
+    mensajeTexto += linkGlobal;
+
+    // 3. Generar Link
+    let mensajeCodificado = encodeURIComponent(mensajeTexto);
+    let urlWhatsapp = "";
+
+    if (telefono && telefono.length > 5) {
+        // Limpiamos el teléfono (quitamos espacios, guiones, paréntesis)
+        let telLimpio = telefono.replace(/[^0-9]/g, '');
+        urlWhatsapp = `https://web.whatsapp.com/send?phone=${telLimpio}&text=${mensajeCodificado}`;
+    } else {
+        // Si no hay teléfono, abre selector de contactos
+        urlWhatsapp = `https://web.whatsapp.com/send?text=${mensajeCodificado}`;
+    }
+    
+    window.open(urlWhatsapp, '_blank');
 }
 </script>
 

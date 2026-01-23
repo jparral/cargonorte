@@ -1,5 +1,7 @@
 <?php
 require_once 'config/db.php';
+require_once 'includes/auth.php';
+
 $pdo = getDBConnection();
 
 // Obtener direcciones pendientes
@@ -19,16 +21,7 @@ $pendientes = $pdo->query($sql)->fetchAll();
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body class="bg-light">
-
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-  <div class="container">
-    <a class="navbar-brand" href="#">Panel Logístico</a>
-    <div class="navbar-nav">
-      <a class="nav-link active" href="index.php">1. Validar Direcciones</a>
-      <a class="nav-link" href="mapa_rutas.php">2. Armar Rutas</a>
-    </div>
-  </div>
-</nav>
+<?php include 'includes/navbar.php'; ?>
 
 <div class="container">
     <h2 class="mb-4">Direcciones Pendientes de Validación</h2>

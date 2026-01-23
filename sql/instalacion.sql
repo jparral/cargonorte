@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS `fleteros` (
   `id_fletero` INT AUTO_INCREMENT PRIMARY KEY,
   `codigo_externo` VARCHAR(50) DEFAULT NULL, -- El "0003" del PDF
   `nombre` VARCHAR(100) NOT NULL,
+  `patente_vehiculo` VARCHAR(20) DEFAULT NULL,
+  `telefono` VARCHAR(50) DEFAULT NULL,
   `activo` TINYINT(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -91,5 +93,18 @@ CREATE TABLE IF NOT EXISTS `entregas` (
   CONSTRAINT `fk_entrega_sucursal` FOREIGN KEY (`id_sucursal`) REFERENCES `sucursales` (`id_sucursal`),
   CONSTRAINT `fk_entrega_fletero` FOREIGN KEY (`id_fletero_asignado`) REFERENCES `fleteros` (`id_fletero`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Tabla de Usuarios
+CREATE TABLE `usuarios` (
+  `id_usuario` INT AUTO_INCREMENT PRIMARY KEY,
+  `usuario` VARCHAR(50) NOT NULL,
+  `password` VARCHAR(255) NOT NULL, -- Guardaremos el hash, no el texto plano
+  `nombre_completo` VARCHAR(100)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Insertar un usuario admin
+INSERT INTO `usuarios` (`usuario`, `password`, `nombre_completo`) 
+VALUES ('admin', '$2y$10$wE.6o.tH6.wH6.wH6.wH6.wH6.wH6.wH6.wH6.wH6.wH6.wH6', 'Administrador');
+
 
 SET FOREIGN_KEY_CHECKS = 1;

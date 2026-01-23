@@ -1,13 +1,13 @@
 <?php
 // Credenciales de la Base de Datos
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'NOMBRE_DE_TU_BD'); // <-- CAMBIAR ESTO
-define('DB_USER', 'USUARIO_DE_TU_BD'); // <-- CAMBIAR ESTO
-define('DB_PASS', 'PASSWORD_DE_TU_BD'); // <-- CAMBIAR ESTO
+define('DB_NAME', 'cargonorte'); // <-- CAMBIAR ESTO
+define('DB_USER', 'root'); // <-- CAMBIAR ESTO
+define('DB_PASS', ''); // <-- CAMBIAR ESTO
 define('DB_CHARSET', 'utf8mb4');
 
 // API Key de Google (Déjala vacía si aún no la tienes, el sistema no fallará)
-define('GOOGLE_API_KEY', 'TU_API_KEY_AQUI'); 
+define('GOOGLE_API_KEY', 'AIzaSyAFXeIQ-MrWRjN3gYEFNWNOXaR8vDnFF2Q'); 
 
 function getDBConnection() {
     try {

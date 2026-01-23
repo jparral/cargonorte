@@ -78,7 +78,7 @@ Incluye un front principal (`index.php`) y una vista asociada a **mapa de rutas*
 
 ## Estructura del proyecto
 Estructura base (carpetas y archivos principales):
-.
+
 ├─ ajax/ # Endpoints para requests desde el frontend (XHR/fetch)
 ├─ api/ # Endpoints tipo API (JSON / integración)
 ├─ assets/ # CSS/JS/imagenes
